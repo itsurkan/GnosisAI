@@ -3,6 +3,8 @@ from azure.storage.blob import BlobServiceClient, ContainerClient
 import os
 import logging
 import uuid
+import asyncio
+from logging_config import setup_logging
 
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
@@ -16,6 +18,8 @@ def get_or_create_container(container_name: str) -> ContainerClient:
     return container_client
 
 async def upload_file(file: UploadFile = File(...)):
+    logging.info("Start upload file")
+    
     tenant = "default"
     container_name = tenant.lower()
 
@@ -38,13 +42,25 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Upload failed, check logs for details.")
 
 async def delete_file(file_id: str):
+    logging.info("Root endpoint hit")
     tenant = "default"
     container_name = tenant.lower()
     container_client = get_or_create_container(container_name)
     blob_client = container_client.get_blob_client(file_id)
+
     try:
-        await blob_client.delete_blob()
+        # виконуємо синхронний виклик у треді
+        exists = await asyncio.to_thread(blob_client.exists)
+        if not exists:
+            raise HTTPException(status_code=404, detail="File not found.")
+
+        await asyncio.to_thread(blob_client.delete_blob)
+
         return {"message": f"File '{file_id}' deleted successfully."}
+
+    except HTTPException as http_exc:
+        raise http_exc
+
     except Exception as e:
         logging.error(f"Delete error: {e}")
         raise HTTPException(status_code=500, detail="Delete failed, check logs for details.")
