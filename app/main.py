@@ -1,9 +1,12 @@
 from fastapi import FastAPI, UploadFile, File, Header, HTTPException
-import logging
 from app.azure_storage import upload_file
+from app.auth import router as auth_router
+from starlette.middleware.sessions import SessionMiddleware
+import os
 
 app = FastAPI()
-
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "defaultsecret"))
+app.include_router(auth_router)
 
 @app.post("/upload/")
 async def upload_file_endpoint(
