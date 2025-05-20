@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter ,useSearchParams } from 'next/navigation'; 
 import { useAuth } from '../context/AuthContext';
-
 const GoogleCallbackPage = () => {
-  const router = useRouter();
-  const { code } = router.query;
-  const { loginWithGoogle } = useAuth();
+ const searchParams = useSearchParams(); // 👈 correct for App Router
+  const code = searchParams?.get('code');  // 👈 equivalent of router.query.code
+
+  const { loginWithGoogle } = useAuth(); // 👈 import was missing
 
   useEffect(() => {
     if (code) {
