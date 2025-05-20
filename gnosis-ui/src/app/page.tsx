@@ -2,12 +2,18 @@
 import Image from "next/image";
 
 import { useAuth } from '../context/AuthContext';
+import LoginPage from "./login";
 
 export default function Home() {
   const { user } = useAuth();
 
   if (!user) {
-    return <div>Please log in to access the application.</div>;
+    return (
+      <div>
+        Please log in to access the application.
+        <LoginPage />
+      </div>
+    );
   }
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
