@@ -8,7 +8,7 @@ import requests
 from authlib.jose import JsonWebKey, JsonWebToken
 import base64
 import json
-from AuthMiddleware import AuthMiddleware
+from .AuthMiddleware import AuthMiddleware
 
 router = APIRouter()
 
@@ -27,7 +27,7 @@ oauth.register(
     },
 )
 
-@router.get("/auth/login")
+@router.get("/api/auth/signin")
 async def login(request: Request):
     redirect_uri = "/auth/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
@@ -51,8 +51,7 @@ async def get_providers(request: Request):
     """
     Endpoint to return available authentication providers.
     """
-    providers = oauth.get_providers()
-    return providers
+    return {"providers": ["google"]}
 
 import logging
 logger = logging.getLogger(__name__)
@@ -122,5 +121,6 @@ async def auth_google(data: dict):
     
 
 # Create and configure the FastAPI app instance
-app = FastAPI(AuthMiddleware)
+app = FastAPI()
+app.add_middleware(AuthMiddleware)
 app.include_router(router)
