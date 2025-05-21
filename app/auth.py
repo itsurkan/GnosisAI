@@ -28,7 +28,7 @@ oauth.register(
 
 @router.get("/auth/login")
 async def login(request: Request):
-    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+    redirect_uri = "http://localhost:8000/auth/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @router.get("/api/login/session")
@@ -57,6 +57,17 @@ async def get_providers(request: Request):
     """
     providers = oauth.get_providers()
     return providers
+
+import logging
+logger = logging.getLogger(__name__)
+
+@router.get("/api/auth/_log")
+async def auth_log(request: Request):
+    """
+    Endpoint to log authentication information.
+    """
+    logger.info("Authentication log endpoint hit")
+    return {"message": "Logged authentication information"}
 
 @router.get("/auth/callback")
 async def auth_callback(request: Request):
