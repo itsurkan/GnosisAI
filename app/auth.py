@@ -8,8 +8,6 @@ import requests
 from authlib.jose import JsonWebKey, JsonWebToken
 import base64
 import json
-from .AuthMiddleware import AuthMiddleware
-
 router = APIRouter()
 
 # Load env
@@ -122,5 +120,4 @@ async def auth_google(data: dict):
 
 # Create and configure the FastAPI app instance
 app = FastAPI()
-app.add_middleware(AuthMiddleware)
 app.include_router(router)
