@@ -43,6 +43,20 @@ async def get_session(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user_info
 
+@router.get("/api/auth/error")
+async def auth_error(request: Request, error_message: str):
+    """
+    Endpoint to display an authentication error.
+    """
+    raise HTTPException(status_code=401, detail=error_message)
+
+@router.get("/api/auth/providers")
+async def get_providers(request: Request):
+    """
+    Endpoint to return available authentication providers.
+    """
+    providers = oauth.get_providers()
+    return providers
 
 @router.get("/auth/callback")
 async def auth_callback(request: Request):
