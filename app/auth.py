@@ -27,12 +27,12 @@ oauth.register(
 
 @router.get("/api/auth/signin")
 async def login(request: Request):
-    redirect_uri = "/auth/callback"
+    redirect_uri = "http://127.0.0.1:8000/auth/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @router.get("/api/auth/session")
 async def get_session(request: Request):
-    user_info = request.state.user
+    user_info = getattr(request.state, "user", None)
     if not user_info:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user_info
@@ -87,6 +87,11 @@ async def auth_callback(request: Request):
     claims = jwt_obj.decode(id_token, key)
     claims.validate()  # optional, validates exp, ia
     
+    request.session["user"] = {
+        "email": claims["email"],
+        "name": claims["name"],
+        "picture": claims.get("picture"),
+    }
     return {
         "email": claims["email"],
         "name": claims["name"],

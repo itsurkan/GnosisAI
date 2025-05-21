@@ -3,11 +3,20 @@ from app.azure_storage import upload_file
 from app.auth import router as auth_router
 from starlette.middleware.sessions import SessionMiddleware
 import os
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # дозволь фронтенд
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "defaultsecret"))
 app.include_router(auth_router)
-
 
 @app.post("/upload/")
 async def upload_file_endpoint(
