@@ -23,4 +23,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 print(f"Token validation error: {e}")
 
         request.state.user = user
-        return await call_next(request)
+        if hasattr(request, 'session'):
+            return await call_next(request)
+        else:
+            return await call_next(request)
