@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import FastAPI, APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
@@ -8,6 +8,7 @@ import requests
 from authlib.jose import JsonWebKey, JsonWebToken
 import base64
 import json
+from AuthMiddleware import AuthMiddleware
 
 router = APIRouter()
 
@@ -31,15 +32,10 @@ async def login(request: Request):
     redirect_uri = "/auth/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
-@router.get("/api/login/session")
+@router.get("/api/auth/session")
 async def get_session(request: Request):
-    """
-    Endpoint to retrieve the current user session.
-    """
-    # Assuming the user's information is available in the request state
-    # or from a cookie/token.  This is a placeholder.
     user_info = request.state.user
-    if user_info is None:
+    if not user_info:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user_info
 
@@ -61,12 +57,12 @@ async def get_providers(request: Request):
 import logging
 logger = logging.getLogger(__name__)
 
-@router.get("/api/auth/_log")
+@router.post("/api/auth/_log")
 async def auth_log(request: Request):
     """
-    Endpoint to log authentication information.
+    Endpoint to log authentication information via POST.
     """
-    logger.info("Authentication log endpoint hit")
+    logger.info("Authentication log endpoint hit via POST")
     return {"message": "Logged authentication information"}
 
 @router.get("/auth/callback")
@@ -76,7 +72,6 @@ async def auth_callback(request: Request):
     if not id_token:
         raise HTTPException(status_code=400, detail="Missing id_token in token")
 
-    
     header = decode_jwt_header(id_token)
     kid = header.get('kid')
     
@@ -107,3 +102,25 @@ def decode_jwt_header(token):
     padding = '=' * (-len(header_b64) % 4)
     header_bytes = base64.urlsafe_b64decode(header_b64 + padding)
     return json.loads(header_bytes)
+
+# Add ping endpoint
+@router.get("/api/ping")
+async def ping():
+    return {"status": "ok"}
+
+@router.post("/auth/google")
+async def auth_google(data: dict):
+    token = data.get("access_token")
+    if not token:
+        raise HTTPException(status_code=400, detail="No token")
+
+    try:
+        id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        return {"success": True, "user": id_info}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    
+
+# Create and configure the FastAPI app instance
+app = FastAPI(AuthMiddleware)
+app.include_router(router)
