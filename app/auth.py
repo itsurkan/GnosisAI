@@ -8,6 +8,8 @@ import requests
 from authlib.jose import JsonWebKey, JsonWebToken
 import base64
 import json
+from starlette.middleware.sessions import SessionMiddleware
+
 router = APIRouter()
 
 # Load env
@@ -21,21 +23,21 @@ oauth.register(
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
     client_kwargs={
         'scope': 'openid email profile',
-        'token_endpoint_auth_method': 'client_secret_post'
     },
 )
 
+
 @router.get("/api/auth/signin")
 async def login(request: Request):
-    redirect_uri = "http://127.0.0.1:8000/auth/callback"
+    redirect_uri = request.url_for("auth_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @router.get("/api/auth/session")
 async def get_session(request: Request):
-    user_info = getattr(request.state, "user", None)
-    if not user_info:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return user_info
+    # user_info = getattr(request.state, "user", None)
+    # if not user_info:
+    raise HTTPException(status_code=401, detail="Not authenticated")
+    # return user_info
 
 @router.get("/api/auth/error")
 async def auth_error(request: Request, error_message: str):
@@ -62,7 +64,7 @@ async def auth_log(request: Request):
     logger.info("Authentication log endpoint hit via POST")
     return {"message": "Logged authentication information"}
 
-@router.get("/auth/callback")
+@router.get("/auth/callback", name="auth_callback")
 async def auth_callback(request: Request):
     token = await oauth.google.authorize_access_token(request)
     id_token = token.get("id_token")
@@ -86,12 +88,7 @@ async def auth_callback(request: Request):
     jwt_obj = JsonWebToken(['RS256'])
     claims = jwt_obj.decode(id_token, key)
     claims.validate()  # optional, validates exp, ia
-    
-    request.session["user"] = {
-        "email": claims["email"],
-        "name": claims["name"],
-        "picture": claims.get("picture"),
-    }
+
     return {
         "email": claims["email"],
         "name": claims["name"],
@@ -125,4 +122,5 @@ async def auth_google(data: dict):
 
 # Create and configure the FastAPI app instance
 app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "defaultsecret"))
 app.include_router(router)
