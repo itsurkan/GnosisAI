@@ -1,10 +1,11 @@
-import { useAuth } from '../context/AuthContext';
+"use client";
+import { useAuth } from './../context/AuthContext';
 
 const LoginPage = () => {
   const { loginWithGoogle } = useAuth();
 
   const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google';
+    window.location.href = '/api/auth/login';
   };
 
   return (

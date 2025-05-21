@@ -8,6 +8,7 @@ app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "defaultsecret"))
 app.include_router(auth_router)
 
+
 @app.post("/upload/")
 async def upload_file_endpoint(
     file: UploadFile = File(...)

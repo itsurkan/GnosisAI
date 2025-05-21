@@ -1,6 +1,7 @@
+"use client";
 import { useEffect } from 'react';
 import { useRouter ,useSearchParams } from 'next/navigation'; 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { OAuth2Client } from 'google-auth-library';
 const GoogleCallbackPage = () => {
  const searchParams = useSearchParams(); // 👈 correct for App Router

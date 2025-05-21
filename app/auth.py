@@ -31,6 +31,19 @@ async def login(request: Request):
     redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
+@router.get("/api/login/session")
+async def get_session(request: Request):
+    """
+    Endpoint to retrieve the current user session.
+    """
+    # Assuming the user's information is available in the request state
+    # or from a cookie/token.  This is a placeholder.
+    user_info = request.state.user
+    if user_info is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user_info
+
+
 @router.get("/auth/callback")
 async def auth_callback(request: Request):
     token = await oauth.google.authorize_access_token(request)
