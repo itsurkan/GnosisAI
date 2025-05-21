@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation';
 
 const AuthContext = createContext<{
   user: any;
@@ -8,24 +8,23 @@ const AuthContext = createContext<{
   logout: () => void;
 }>({
   user: null,
-  loginWithGoogle: async () => {},
-  logout: () => {},
+  loginWithGoogle: async (code: string) => { },
+  logout: () => { },
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+useEffect(() => {
+  fetch('/api/ping')
+    .then(res => res.text())
+    .then(console.log)
+}, []);
 
   const loginWithGoogle = async (code: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

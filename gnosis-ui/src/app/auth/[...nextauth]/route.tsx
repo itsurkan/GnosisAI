@@ -12,7 +12,7 @@ const handler = NextAuth({
   callbacks: {
     async signIn({ user, account, profile }) {
       // Optional: Send user data to your backend
-      const res = await fetch("http://localhost:8000/auth/google", {
+      const res = await fetch("/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ access_token: account?.access_token }),
