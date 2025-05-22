@@ -33,10 +33,7 @@ app.include_router(router)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "defaultsecret"))
 
 @app.post("/upload/")
-async def upload_file_endpoint(
-    file: UploadFile = File(...),
-    authorization: str = Header(None)
-):
+async def upload_file_endpoint(file: UploadFile = File(...), authorization: str = Header(None)):
     token = decode_jwt_payload(authorization)
     return await upload_file(file, token["email"])
 
