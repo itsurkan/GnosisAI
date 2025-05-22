@@ -9,6 +9,15 @@ from authlib.jose import JsonWebKey, JsonWebToken
 import base64
 import json
 from starlette.middleware.sessions import SessionMiddleware
+import os
+import httpx
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import RedirectResponse
+from google.oauth2 import id_token
+from dotenv import load_dotenv
+from google.auth.transport import requests
+from fastapi.responses import RedirectResponse
+from urllib.parse import urlencode
 
 router = APIRouter()
 
@@ -25,19 +34,21 @@ oauth.register(
         'scope': 'openid email profile',
     },
 )
-
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 @router.get("/api/auth/signin")
 async def login(request: Request):
-    redirect_uri = request.url_for("auth_callback")
+    redirect_uri = "http://127.0.0.1:8000/auth/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @router.get("/api/auth/session")
 async def get_session(request: Request):
-    # user_info = getattr(request.state, "user", None)
-    # if not user_info:
-    raise HTTPException(status_code=401, detail="Not authenticated")
-    # return user_info
+    user_name = request.session.get("user_name")  # Ім'я, яке ти зберігаєш у сесії при логіні
+    if not user_name:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    return {"user_name": user_name}
 
 @router.get("/api/auth/error")
 async def auth_error(request: Request, error_message: str):
@@ -65,35 +76,53 @@ async def auth_log(request: Request):
     return {"message": "Logged authentication information"}
 
 @router.get("/auth/callback", name="auth_callback")
-async def auth_callback(request: Request):
-    token = await oauth.google.authorize_access_token(request)
-    id_token = token.get("id_token")
-    if not id_token:
-        raise HTTPException(status_code=400, detail="Missing id_token in token")
-
-    header = decode_jwt_header(id_token)
-    kid = header.get('kid')
-    
-    # Step 2: Fetch Google's JWKS
-    jwks_url = "https://www.googleapis.com/oauth2/v3/certs"
-    jwks_response = requests.get(jwks_url).json()
-
-    # Step 3: Find the key with matching kid
-    jwks = JsonWebKey.import_key_set(jwks_response)
-    key = jwks.find_by_kid(kid)
-    if key is None:
-        raise Exception("Public key not found for kid")
-
-    # Step 4: Verify the JWT
-    jwt_obj = JsonWebToken(['RS256'])
-    claims = jwt_obj.decode(id_token, key)
-    claims.validate()  # optional, validates exp, ia
-
-    return {
-        "email": claims["email"],
-        "name": claims["name"],
-        "picture": claims.get("picture"),
+async def auth_callback(code: str, request: Request):
+    token_request_uri = "https://oauth2.googleapis.com/token"
+    data = {
+        'code': code,
+        'client_id': GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
+        'redirect_uri': request.url_for('auth_callback'),
+        'grant_type': 'authorization_code',
     }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(token_request_uri, data=data)
+        response.raise_for_status()
+        token_response = response.json()
+
+    id_token_value = token_response.get('id_token')
+    if not id_token_value:
+        raise HTTPException(status_code=400, detail="Missing id_token in response.")
+
+    try:
+        id_info = id_token.verify_oauth2_token(id_token_value, requests.Request(), GOOGLE_CLIENT_ID)
+
+        request.session['user_name'] = id_info.get('name')
+        request.session['email'] = id_info.get('email')
+
+        params = {
+        "email": id_info["email"],
+        "name": id_info.get("name"),
+         "picture": id_info.get("picture"),
+         # Не передавай секретні дані в URL!
+        }
+        frontend_url = "http://localhost:3000?" + urlencode(params)
+
+        return RedirectResponse(frontend_url)
+        return {
+        "email": id_info["email"],
+        "name": id_info["name"],
+        "picture": id_info.get("picture"),
+    }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid id_token: {str(e)}")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e)
+
+
 
 # Step 1: Decode JWT header to get 'kid'
 def decode_jwt_header(token):
@@ -105,7 +134,7 @@ def decode_jwt_header(token):
 # Add ping endpoint
 @router.get("/api/ping")
 async def ping():
-    return {"status": "ok"}
+    return "pong"   
 
 @router.post("/auth/google")
 async def auth_google(data: dict):
@@ -122,5 +151,17 @@ async def auth_google(data: dict):
 
 # Create and configure the FastAPI app instance
 app = FastAPI()
+
+from fastapi.middleware.cors import CORSMiddleware
+
+
+# CORS MUST be applied before routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # exact match!
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "defaultsecret"))
 app.include_router(router)
