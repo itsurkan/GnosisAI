@@ -13,17 +13,6 @@ pinecone_index_name = "gnosis"  # Replace with your index name
 # Initialize Pinecone client
 pc = Pinecone(api_key=pinecone_api_key)
 
-# Check if index exists, create if it doesn't
-if pinecone_index_name not in pc.list_indexes():
-    pc.create_index(
-        name=pinecone_index_name,
-        dimension=1536,  # Standard dimension for many embedding models
-        spec=ServerlessSpec(
-            cloud=CloudProvider.AWS,
-            region=AwsRegion.US_EAST_1
-        ),
-        vector_type=VectorType.DENSE
-    )
 
 
 async def add_to_index(chunks: List[str], email: str):
@@ -37,10 +26,10 @@ async def add_to_index(chunks: List[str], email: str):
         chunk_id = f"{email}-{i}"  # Unique ID for each chunk
         #  Pinecone integrated embedding
         vectors_to_upsert.append(
-            (chunk_id, [], {"chunk_text": chunk})
+            (chunk_id, {"chunk_text": chunk})
         )
 
-    index.upsert(
+    index.upsert_records(
         vectors=vectors_to_upsert,
         namespace=namespace
     )

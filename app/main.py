@@ -9,18 +9,12 @@ from app.emailToTenant import email_to_tenant
 from app.pinecone import add_to_index
 from pdfminer.high_level import extract_text as extract_text_pdf
 import docx
+import logging
+import re
+logger = logging.getLogger(__name__)
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, UnstructuredMarkdownLoader, UnstructuredFileLoader
 
-def chunk_text(text, chunk_size=200, chunk_overlap=50):
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        if end > len(text):
-            end = len(text)
-        chunk = text[start:end]
-        chunks.append(chunk)
-        start = end - chunk_overlap
-    return chunks
 
 app = FastAPI(
     title="Your API Title",
@@ -59,8 +53,19 @@ async def upload_file_endpoint(file: UploadFile = File(...), authorization: str 
     else:
         raise HTTPException(status_code=400, detail="Invalid file type. Only PDF, DOCX, and TXT files are supported.")
 
-    chunks = chunk_text(file_content)
-    await add_to_index(chunks, index)
+    logger.info(f"File type: {file_type}")
+    logger.info(f"File content length: {len(file_content)}")
+
+    text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=500,
+                chunk_overlap=100,
+                length_function=len,
+                is_separator_regex=False,
+            )
+    texts = text_splitter.split_text(file_content)
+    logger.info(f"Number of chunks: {len(texts)}")
+
+    await add_to_index(texts, index)
     return {"filename": file.filename, "file_type": file_type, "file_content": file_content}
 
 @app.delete("/delete/{file_id}")
