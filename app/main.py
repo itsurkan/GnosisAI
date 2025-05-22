@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from authlib.jose import jwt
 from app.tokenDecoder import decode_jwt_payload
 from app.emailToTenant import email_to_tenant
+from app.pinecone import add_to_index
 
 app = FastAPI(
     title="Your API Title",
@@ -31,7 +32,7 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY",
 async def upload_file_endpoint(file: UploadFile = File(...), authorization: str = Header(None)):
     token = decode_jwt_payload(authorization)
     index = email_to_tenant(token["email"])
-    # Add to pinecone
+    await add_to_index(file, token["email"])
     return await upload_file(file, token["email"])
 
 @app.delete("/delete/{file_id}")
@@ -45,3 +46,6 @@ async def get_user_files(authorization: str = Header(None)):
     from app.azure_storage import list_files
     token = decode_jwt_payload(authorization)
     return await list_files(token["email"])
+
+
+
