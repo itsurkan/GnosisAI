@@ -66,7 +66,8 @@ async def upload_file(file: UploadFile = File(...), email: str = None):
         blob_client = container_client.get_blob_client(blob_name)
 
         content = await file.read()
-        blob_client.upload_blob(content, overwrite=True)
+        metadata = {"filename": file.filename}
+        blob_client.upload_blob(content, overwrite=True, metadata=metadata)
 
         logger.info(f"Uploaded file '{blob_name}' to container '{container_name}'.")
         return {"message": f"File '{blob_name}' uploaded successfully."}
