@@ -5,34 +5,7 @@ import logging
 import uuid
 import asyncio
 import logging
-import re
-import hashlib
-
-
-def email_to_tenant(email: str) -> str:
-    """
-    Converts an email into a sanitized Azure container name (tenant).
-    Ensures compliance with Azure naming rules.
-    """
-    if '@' not in email:
-        raise ValueError("Invalid email address")
-
-    local_part, domain = email.lower().split('@', 1)
-
-    # Basic alphanumeric slug, replace dots with hyphens, remove other non-alphanum
-    slug = re.sub(r'[^a-z0-9-]', '-', f"{local_part}-{domain}")
-    slug = re.sub(r'-+', '-', slug).strip('-')  # Remove repeated and leading/trailing hyphens
-
-    # Ensure valid length (max 63), fallback to hash if too long
-    if len(slug) > 63:
-        hash_suffix = hashlib.sha1(email.encode()).hexdigest()[:8]
-        slug = slug[:54] + "-" + hash_suffix  # 54 + 1 + 8 = 63
-
-    # If too short (e.g., "a@b.co" → "a-b-co"), ensure min length
-    if len(slug) < 3:
-        slug += "-" + hashlib.sha1(email.encode()).hexdigest()[:3]
-
-    return slug
+from app.emailToTenant import email_to_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +27,7 @@ def get_or_create_container(container_name: str) -> ContainerClient:
 
 async def upload_file(file: UploadFile = File(...), email: str = None):
     logging.info("Start upload file")
-    tenant = email_to_tenant(email)
-    container_name = tenant.lower()
+    container_name = email_to_tenant(email)
     # Перевірка валідності імені контейнера
     if not container_name.replace('-', '').isalnum():
         raise HTTPException(status_code=400, detail="Invalid tenant/container name")
@@ -75,9 +47,9 @@ async def upload_file(file: UploadFile = File(...), email: str = None):
         logger.error(f"Upload error for file '{file.filename}': {e}")
         raise
 
-async def delete_file(file_id: str):
+async def delete_file(file_id: str, email: str = None):
     try:
-        tenant = "default"
+        tenant = email_to_tenant(email)
         container_name = tenant.lower()
         container_client = get_or_create_container(container_name)
         blob_client = container_client.get_blob_client(file_id)
@@ -98,3 +70,16 @@ async def delete_file(file_id: str):
     except Exception as e:
         logger.error(f"Delete error for file '{file_id}': {e}")
         raise HTTPException(status_code=500, detail="Delete failed, check logs for details.")
+
+async def list_files(email: str):
+    container_name = email_to_tenant(email)
+    container_client = get_or_create_container(container_name)
+    file_names = []
+    blobs = container_client.list_blobs()
+    for blob in blobs:
+        file_name = blob.name.split("_", 1)[1] if "_" in blob.name else blob.name
+        blob_properties = container_client.get_blob_client(blob.name).get_blob_properties()
+        file_type = blob_properties.content_settings.content_type
+        file_size = blob_properties.size
+        file_names.append({"fullname": blob.name, "name": file_name, "file_type": file_type, "file_size": file_size})
+    return file_names
