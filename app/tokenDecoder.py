@@ -20,11 +20,19 @@ def decode_jwt_header(token: str) -> dict:
     
 
 
-def decode_jwt_payload(token: str) -> dict:
+from fastapi import HTTPException
+import base64
+import json
+
+def decode_jwt_payload(authorization: str) -> dict:
     """
     Decodes the payload (body) of a JWT token and returns it as a dictionary.
     Assumes the token is in JWT format and may include 'Bearer ' prefix.
     """
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Authorization header is missing")
+
+    token = authorization
     if token.startswith("Bearer "):
         token = token[len("Bearer "):]
 

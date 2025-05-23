@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from authlib.jose import jwt
 from app.tokenDecoder import decode_jwt_payload
 from app.emailToTenant import email_to_tenant
-from app.pinecone import add_to_index
+from app.pinecone import add_to_index, query_index_pinecone
 from pdfminer.high_level import extract_text as extract_text_pdf
 import docx
 import logging
@@ -80,9 +80,9 @@ async def get_user_files(authorization: str = Header(None)):
     token = decode_jwt_payload(authorization)
     return await list_files(token["email"])
 
-@app.post("/query/")
+@app.get("/query")
 async def query_index(query: str, authorization: str = Header(None)):
     token = decode_jwt_payload(authorization)
-    email = token["email"]
-    relevant_chunks = await query_index(query, email)
-    return {"query": query, "email": email, "results": relevant_chunks}
+    tenant = email_to_tenant(token["email"])
+    relevant_chunks = await query_index_pinecone(query, tenant)
+    return {"query": query, "email": tenant, "results": relevant_chunks}
