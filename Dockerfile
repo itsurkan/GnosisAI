@@ -4,7 +4,7 @@ EXPOSE 8000
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-COPY .env /app/.env
+# COPY .env /app/.env
 WORKDIR /app
 
 COPY requirements.txt /app/
