@@ -16,7 +16,7 @@ pc = Pinecone(api_key=pinecone_api_key)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 async def add_to_index(chunks: List[str], email: str):
-    logger.info(f"Adding {len(chunks)} chunks to index for email: {email}")
+    
 
     index = pc.Index(pinecone_index_name)
     namespace = email  # Use email as namespace
